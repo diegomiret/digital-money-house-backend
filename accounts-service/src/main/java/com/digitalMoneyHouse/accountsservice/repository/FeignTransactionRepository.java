@@ -13,7 +13,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 
 import java.util.List;
 
-@FeignClient(name = "transactions-service", url = "http://transactions-service:8083/transaction", configuration = {FeignConfig.class, CustomErrorDecoder.class})
+@FeignClient(name = "transactions-service", url = "http://localhost:8083/transaction", configuration = {FeignConfig.class, CustomErrorDecoder.class})
 public interface FeignTransactionRepository {
 
     @GetMapping("/lastTransactions/{userId}")

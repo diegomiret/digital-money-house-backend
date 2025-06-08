@@ -40,6 +40,7 @@ public class SecurityConfig {
                         .requestMatchers(new AntPathRequestMatcher("/account/activity")).authenticated()
                         .requestMatchers(new AntPathRequestMatcher("/account/activity/{transactionId}")).authenticated()
                         .requestMatchers(new AntPathRequestMatcher("/account/users/{userId}/accounts")).authenticated()
+                        .requestMatchers(new AntPathRequestMatcher("/account//users/{userId}/activities")).authenticated()
                         .requestMatchers(new AntPathRequestMatcher("/account/register-card")).authenticated()
                         .requestMatchers(new AntPathRequestMatcher("/account/cards")).authenticated()
                         .requestMatchers(new AntPathRequestMatcher("/account/card/{id}")).authenticated()

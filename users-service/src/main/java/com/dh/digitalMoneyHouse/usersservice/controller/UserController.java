@@ -24,10 +24,18 @@ public class UserController {
         return "Hola mundo";
     }
 
+    //  este metodo obtiene por el usuario por ID de Keycloak
     @GetMapping("/{id}")
     public ResponseEntity<?> getUserById(@PathVariable String id) {
         return ResponseEntity.status(HttpStatus.OK).body(userService.getUserById(id));
     }
+
+    //  este metodo obtiene por el id original del usuario
+    @GetMapping("/userOriginal/{id}")
+    public ResponseEntity<?> getOriginalUserById(@PathVariable Long id) {
+        return ResponseEntity.status(HttpStatus.OK).body(userService.getUserByOriginalId(id));
+    }
+
 
     @PostMapping("/register")
     public ResponseEntity<?> createUser(@RequestBody UserRegistrationDTO userRegistrationDTO) throws Exception {

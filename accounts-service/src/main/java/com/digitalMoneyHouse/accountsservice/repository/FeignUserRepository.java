@@ -24,4 +24,7 @@ public interface FeignUserRepository {
     @GetMapping("/cvu/{cvu}")
     Long getUserIdByCvu(@PathVariable String cvu);
 
+    @GetMapping("/userOriginal/{id}")
+    User getOriginalUserById(@PathVariable Long id);
+
 }

@@ -161,6 +161,31 @@ public class UserService {
                 .orElseThrow(()-> new ResourceNotFoundException("User with id " + id + " not found"));
     }
 
+
+
+    public UserDTO getUserByOriginalId(long id) {
+
+        Optional<User> usuarioBuscado = userRepository.findById(id);
+
+        if (usuarioBuscado.isPresent()) {
+            User user = usuarioBuscado.get();
+            UserDTO userDTO = new UserDTO(
+                    user.getName(),
+                    user.getLastName(),
+                    user.getUsername(),
+                    user.getEmail(),
+                    user.getPhoneNumber(),
+                    user.getCvu(),
+                    user.getAlias(),
+                    user.getKeycloakId()
+            );
+            return userDTO;
+        } else {
+            throw new ResourceNotFoundException("User with id " + id + " not found");
+        }
+    }
+
+
     public AccessKeycloak login (Login loginData) throws Exception {
         Optional<User> optionalUser = userRepository.findByEmail(loginData.getEmail());
         if(optionalUser.isEmpty()) {

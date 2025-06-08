@@ -41,6 +41,7 @@ public class SecurityConfig {
                         .requestMatchers(new AntPathRequestMatcher("/user/update-alias")).authenticated()
                         .requestMatchers(new AntPathRequestMatcher("/user/update-password")).authenticated()
                         .requestMatchers(new AntPathRequestMatcher("/user/update-user")).authenticated()
+                        .requestMatchers(new AntPathRequestMatcher("/user/userOriginal/{id}")).permitAll()
                         .anyRequest().permitAll()
                 )
                 .csrf(csrf-> csrf.disable())

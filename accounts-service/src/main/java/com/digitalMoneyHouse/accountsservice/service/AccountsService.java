@@ -16,8 +16,10 @@ import org.springframework.web.bind.annotation.RequestBody;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 @Service
 public class AccountsService {
@@ -60,6 +62,61 @@ public class AccountsService {
              throw new ResourceNotFoundException("No transactions found");
          }
          return transactions;
+    }
+
+
+    public List<TransactionDTO> getLastFiveTransactionsFull(Long userId) throws ResourceNotFoundException {
+        List<Transaction> transactions = feignTransactionRepository.getLastFiveTransactions(userId);
+        if (transactions.isEmpty()) {
+            throw new ResourceNotFoundException("No transactions found");
+        }
+
+        User feignUser = feignUserRepository.getOriginalUserById(userId);
+        //User feignUser = feignUserRepository.getOriginalUserById(userId);
+
+        return transactions.stream()
+                .map(transaction -> {
+                    TransactionDTO dto = new TransactionDTO();
+                    dto.setId(transaction.getId().toString());
+                    dto.setAmount(transaction.getAmountOfMoney());
+                    dto.setOrigin(String.valueOf(transaction.getSenderId()));
+                    dto.setDestination(String.valueOf(transaction.getReceiverId()));
+                    dto.setDated(transaction.getDate().atZone(ZoneId.systemDefault()));
+
+                    boolean isTransfer = transaction.getSenderId() != transaction.getReceiverId();
+                    boolean isDeposit = transaction.getSenderId() == userId.intValue()
+                            && transaction.getReceiverId() == userId.intValue();
+
+                    //  si es transferencia, coloco el nombre dependendiendo el destinatario
+                            long idUserAmostrar = 0;
+
+                            if(isTransfer){
+
+                        if(transaction.getAmountOfMoney() < 0){
+                            //  es recibida, entoces muestro el que elnvio
+                            idUserAmostrar = transaction.getReceiverId();
+                        }
+                        if(transaction.getAmountOfMoney() > 0) {
+                            //  es recibida, entoces muestro el que elnvio
+                            idUserAmostrar = transaction.getSenderId();
+                        }
+                        }
+
+
+
+                    User feignUserSearched = feignUserRepository.getOriginalUserById(idUserAmostrar);
+
+                    dto.setName(feignUserSearched.getFirstName() + " " + feignUserSearched.getLastName());
+
+                    dto.setType(isTransfer
+                            ? TransactionType.Transfer
+                            : isDeposit
+                            ? TransactionType.Deposit
+                            : null); // O manejar otro caso si aplica
+
+                    return dto;
+                })
+                .collect(Collectors.toList());
     }
 
     public List<Transaction> getAllTransactions(Long userId) throws ResourceNotFoundException {
