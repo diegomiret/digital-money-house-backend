@@ -54,8 +54,6 @@ public class UserController {
     public ResponseEntity<?> logout() {
         String userId = SecurityContextHolder.getContext().getAuthentication().getName();
 
-        System.out.println(userId);
-
         if (userId.isEmpty()) {
             ResponseEntity.notFound().build();
         }
