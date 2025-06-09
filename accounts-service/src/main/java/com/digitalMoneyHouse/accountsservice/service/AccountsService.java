@@ -17,6 +17,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -87,11 +88,11 @@ public class AccountsService {
                     boolean isDeposit = transaction.getSenderId() == userId.intValue()
                             && transaction.getReceiverId() == userId.intValue();
 
-                    //  si es transferencia, coloco el nombre dependendiendo el destinatario
+
                             long idUserAmostrar = 0;
 
                             if(isTransfer){
-
+                        //  si es transferencia, coloco el nombre dependendiendo el destinatario
                         if(transaction.getAmountOfMoney() < 0){
                             //  es recibida, entoces muestro el que elnvio
                             idUserAmostrar = transaction.getReceiverId();
@@ -102,11 +103,15 @@ public class AccountsService {
                         }
                         }
 
+                    if (isTransfer){
+                        User feignUserSearched = feignUserRepository.getOriginalUserById(idUserAmostrar);
 
+                        dto.setName(feignUserSearched.getFirstName() + " " + feignUserSearched.getLastName());
 
-                    User feignUserSearched = feignUserRepository.getOriginalUserById(idUserAmostrar);
+                    }else{
+                        dto.setName("");
+                    }
 
-                    dto.setName(feignUserSearched.getFirstName() + " " + feignUserSearched.getLastName());
 
                     dto.setType(isTransfer
                             ? TransactionType.Transfer
@@ -143,19 +148,62 @@ public class AccountsService {
             throw new ResourceNotFoundException("Account not found");
         } else {
             Account account = accountOptional.get();
-            Card newCard = new Card(account.getId(), card.getHolder(), card.getNumber(), card.getExpirationDate(), card.getCvv());
+            Card newCard = new Card(account.getId(), card.getName(), card.getNumber(), card.getExpiration(), card.getCvc());
             return feignCardRepository.registerCard(newCard);
         }
     }
 
-    public List<Card> getAllCards(Long userId) throws ResourceNotFoundException {
+    public List<CardResponseDTO> getAllCards(Long userId) throws ResourceNotFoundException {
         Optional<Account> accountOptional = accountsRepository.findByUserId(userId);
         if(accountOptional.isEmpty()) {
             throw new ResourceNotFoundException("Account not found");
         } else {
             Account account = accountOptional.get();
-            return feignCardRepository.getAllCardsByAccountId(account.getId());
+            List<Card> allCards =  feignCardRepository.getAllCardsByAccountId(account.getId());
+
+            List<CardResponseDTO> dtos = new ArrayList<>();
+
+            for (Card card : allCards) {
+                String type;
+                String number = card.getNumber();
+
+                if (number == null || number.isEmpty()) {
+                    type = "UNKNOWN";
+                } else if (number.startsWith("4")) {
+                    type = "VISA";
+                } else if (number.startsWith("5")) {
+                    type = "MASTERCARD";
+                } else if (number.startsWith("3")) {
+                    type = "AMEX";
+                } else {
+                    type = "OTHER";
+                }
+
+                CardResponseDTO dto = new CardResponseDTO(
+                        card.getId().toString(), // No tenés ID en la entidad Card
+                        card.getNumber(),
+                        card.getName(),
+                        type
+                );
+
+                dtos.add(dto);
+            }
+
+            return dtos;
+
+
+
+
         }
+
+
+
+
+
+
+
+
+
     }
 
 
@@ -196,7 +244,7 @@ public class AccountsService {
 
     public void addMoney(DepositMoneyRequest request, Long userId) throws ResourceNotFoundException {
             Card card = getCardByNumber(request.getCardNumber(), userId);
-        System.out.println(card.getNumber() + " --- " + card.getHolder());
+        System.out.println(card.getNumber() + " --- " + card.getName());
             Optional<Account> accountOptional = accountsRepository.findByUserId(userId);
             if(accountOptional.isEmpty()) {
                 throw new ResourceNotFoundException("Account not found");
@@ -245,4 +293,36 @@ public class AccountsService {
         }
     }
 
+
+    public Account patchAccount(Long userId, PatchAccountRequest request) throws ResourceNotFoundException {
+
+        Optional<Account> accountOptional = accountsRepository.findByUserId(userId);
+
+        if (accountOptional.isEmpty()) {
+            throw new ResourceNotFoundException("Account not found");
+        }
+        Account account = accountOptional.get();
+
+        // Validar que la cuenta pertenezca al usuario
+        if (!account.getUserId().equals(userId)) {
+            throw new ResourceNotFoundException("Account does not belong to the user");
+        }
+
+        // Aplicar los cambios si fueron enviados
+        if (request.getAlias() != null) {
+            account.setAlias(request.getAlias());
+        }
+
+        return accountsRepository.save(account);
+    }
+
+    public void deleteCardById(Long idCard, Long userId) throws ResourceNotFoundException {
+        Optional<Account> accountOptional = accountsRepository.findByUserId(userId);
+        if(accountOptional.isEmpty()) {
+            throw new ResourceNotFoundException("Account not found");
+        } else {
+            Account account = accountOptional.get();
+            feignCardRepository.deleteCardById(account.getId(), idCard);
+        }
+    }
 }

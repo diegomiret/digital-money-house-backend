@@ -10,7 +10,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
-@FeignClient(name = "cards-service", url = "http://cards-service:8085/card", configuration = {FeignConfig.class, CustomErrorDecoder.class})
+@FeignClient(name = "cards-service", url = "http://localhost:8085/card", configuration = {FeignConfig.class, CustomErrorDecoder.class})
 public interface FeignCardRepository {
 
     @PostMapping("/register-card")
@@ -22,8 +22,12 @@ public interface FeignCardRepository {
     @GetMapping("/{accountId}/card/{cardId}")
     Card getCardByIdAndAccountId (@PathVariable Long accountId, @PathVariable Long cardId);
 
-    @DeleteMapping("/{accountId}/card/{cardNumber}")
+    @DeleteMapping("/{accountId}/cardOLD/{cardNumber}")
     void deleteCard(@PathVariable Long accountId, @PathVariable String cardNumber);
+
+    @DeleteMapping("/{accountId}/card/{idCard}")
+    void deleteCardById(@PathVariable Long accountId, @PathVariable Long idCard);
+
 
     @GetMapping("/{accountId}/cardNumber/{cardNumber}")
     Card getCardByNumberAndAccountId (@PathVariable Long accountId, @PathVariable String cardNumber);

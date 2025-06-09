@@ -78,6 +78,15 @@ public class AccountsController {
         return ResponseEntity.status(HttpStatus.CREATED).body(accountsService.registerCard(card, userId));
     }
 
+
+    @PostMapping("/users/{idUser}/cards")
+    public ResponseEntity<?> registerCard(@RequestBody CardRequest card) throws ResourceNotFoundException {
+        String kcId = SecurityContextHolder.getContext().getAuthentication().getName();
+        Long userId=  accountsService.getUserIdByKcId(kcId);
+        return ResponseEntity.status(HttpStatus.CREATED).body(accountsService.registerCard(card, userId));
+    }
+
+
     @GetMapping("/cards")
     public ResponseEntity<?> getAllCards() throws ResourceNotFoundException {
         String kcId = SecurityContextHolder.getContext().getAuthentication().getName();
@@ -117,11 +126,38 @@ public class AccountsController {
         return ResponseEntity.ok("Money was added successfully to your account");
     }
 
+    @PatchMapping("/users/{userId}/accounts/1")
+    public ResponseEntity<Account> patchAccount(
+            @PathVariable String userId,
+            @RequestBody PatchAccountRequest request) throws ResourceNotFoundException {
+
+        Long userIdX =  accountsService.getUserIdByKcId(userId);
+        Account updatedAccount = accountsService.patchAccount(userIdX, request);
+        return ResponseEntity.ok(updatedAccount);
+    }
+
+
     @PostMapping("/send-money")
     public ResponseEntity<?> sendMoney(@RequestBody TransactionRequest transactionRequest) throws BadRequestException {
         String kcId = SecurityContextHolder.getContext().getAuthentication().getName();
         Long userId=  accountsService.getUserIdByKcId(kcId);
         return ResponseEntity.status(HttpStatus.OK).body(accountsService.sendMoney(transactionRequest, userId));
+    }
+
+    @GetMapping("/users/{idUser}/cards")
+    public ResponseEntity<?> getAllCardsById(@PathVariable String idUser) throws ResourceNotFoundException {
+        //String kcId = SecurityContextHolder.getContext().getAuthentication().getName();
+        Long userIdX =  accountsService.getUserIdByKcId(idUser);
+        return ResponseEntity.status(HttpStatus.OK).body(accountsService.getAllCards(userIdX));
+    }
+
+
+    @DeleteMapping("/users/{idUser}/cards/{idCard}")
+    public ResponseEntity<?> deleteIdCard(@PathVariable String idUser, @PathVariable Long idCard) throws ResourceNotFoundException {
+        //String kcId = SecurityContextHolder.getContext().getAuthentication().getName();
+        Long userIdX=  accountsService.getUserIdByKcId(idUser);
+        accountsService.deleteCardById(idCard, userIdX);
+        return ResponseEntity.ok().build();
     }
 
 }
