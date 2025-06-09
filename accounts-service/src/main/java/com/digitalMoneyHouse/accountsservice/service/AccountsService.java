@@ -132,13 +132,21 @@ public class AccountsService {
         return transactions;
     }
 
-    public Transaction getTransaction(Long userId, Long transactionId) throws ResourceNotFoundException {
+    public ActivityDTOResponse getTransaction(Long userId, Long transactionId) throws ResourceNotFoundException {
         Optional<Account> accountOptional = accountsRepository.findByUserId(userId);
         if(accountOptional.isEmpty()) {
             throw new ResourceNotFoundException("Account not found");
         } else {
             Account account = accountOptional.get();
-            return feignTransactionRepository.getTransaction(account.getId(), transactionId);
+
+            Transaction transaccion = feignTransactionRepository.getTransaction(account.getId(), transactionId);
+
+            ActivityDTOResponse response = new ActivityDTOResponse();
+            response.setAmount(transaccion.getAmountOfMoney());
+            response.setType(transaccion.getType());
+
+            return response;
+
         }
     }
 
@@ -323,6 +331,28 @@ public class AccountsService {
         } else {
             Account account = accountOptional.get();
             feignCardRepository.deleteCardById(account.getId(), idCard);
+        }
+    }
+
+    public Transaction addActivity(ActivityRequestDTO request, Long userId) throws ResourceNotFoundException {
+        //Card card = getCardByNumber(request.getCardNumber(), userId);
+
+        Optional<Account> accountOptional = accountsRepository.findByUserId(userId);
+        if(accountOptional.isEmpty()) {
+            throw new ResourceNotFoundException("Account not found");
+        } else {
+            //Account account = accountOptional.get();
+
+            CreateTransaction newTransaction = new CreateTransaction();
+            newTransaction.setType(request.getType());
+            newTransaction.setDate(LocalDateTime.now());
+            newTransaction.setDescription(request.getDescription());
+            newTransaction.setReceiverId(Math.toIntExact(userId));
+            newTransaction.setSenderId(Math.toIntExact(userId));
+            newTransaction.setAmountOfMoney(request.getAmount());
+
+            return feignTransactionRepository.createTransaction(newTransaction);
+
         }
     }
 }

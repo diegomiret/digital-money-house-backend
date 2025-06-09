@@ -31,6 +31,7 @@ public class Account {
     @Column(name = "cvu", nullable = false)
     private String cvu;
 
+
     @Transient
     private List<Transaction> transactions;
 

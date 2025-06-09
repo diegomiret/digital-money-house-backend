@@ -160,4 +160,21 @@ public class AccountsController {
         return ResponseEntity.ok().build();
     }
 
+
+    @PostMapping("/users/{idUser}/activities")
+    public ResponseEntity<?> AddMoney(@RequestBody ActivityRequestDTO request, @PathVariable String idUser) throws ResourceNotFoundException {
+        String kcId = SecurityContextHolder.getContext().getAuthentication().getName();
+        Long userId=  accountsService.getUserIdByKcId(kcId);
+        accountsService.addActivity(request, userId);
+        return ResponseEntity.status(HttpStatus.OK).body(accountsService.addActivity(request, userId));
+    }
+
+
+    //  Obtiene una actividad
+    @GetMapping("/users/{userId}/activities/{idTransaction}")
+    public ResponseEntity<?> getActivity(@PathVariable String userId, @PathVariable long idTransaction) throws ResourceNotFoundException {
+        //String kcId = SecurityContextHolder.getContext().getAuthentication().getName();
+        Long userOriginal=  accountsService.getUserIdByKcId(userId);
+        return ResponseEntity.status(HttpStatus.OK).body(accountsService.getTransaction(userOriginal, idTransaction));
+    }
 }
