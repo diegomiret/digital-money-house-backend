@@ -30,6 +30,12 @@ public class AccountsController {
         return ResponseEntity.status(HttpStatus.OK).body(accountsService.getAccountInformation(id));
     }
 
+    //  obtiene todas las cuentas
+    @GetMapping("/accounts")
+    public ResponseEntity<?> getAllAccounts() throws ResourceNotFoundException {
+        return ResponseEntity.status(HttpStatus.OK).body(accountsService.getAllAccounts());
+    }
+
     @GetMapping("/user-information")
     public ResponseEntity<?> getAccount() throws ResourceNotFoundException {
         String kcId = SecurityContextHolder.getContext().getAuthentication().getName();
@@ -63,12 +69,12 @@ public class AccountsController {
         return ResponseEntity.status(HttpStatus.OK).body(accountsService.getTransaction(userId, transactionId));
     }
 
-    //  Obtiene las ultimas 5 transacciones
+    //  Obiene las transacciones todas o la que indique la variable _limit
     @GetMapping("/users/{userId}/activities")
-    public ResponseEntity<?> getActivities(@PathVariable String userId) throws ResourceNotFoundException {
+    public ResponseEntity<?> getActivities(@PathVariable String userId, @RequestParam(name = "_limit", required = false) Integer limit) throws ResourceNotFoundException {
         //String kcId = SecurityContextHolder.getContext().getAuthentication().getName();
         Long userOriginal=  accountsService.getUserIdByKcId(userId);
-        return ResponseEntity.status(HttpStatus.OK).body(accountsService.getLastFiveTransactionsFull(userOriginal));
+        return ResponseEntity.status(HttpStatus.OK).body(accountsService.getLastFiveTransactionsFull(userOriginal, limit));
     }
 
     @PostMapping("/register-card")
@@ -165,7 +171,7 @@ public class AccountsController {
     public ResponseEntity<?> AddMoney(@RequestBody ActivityRequestDTO request, @PathVariable String idUser) throws ResourceNotFoundException {
         String kcId = SecurityContextHolder.getContext().getAuthentication().getName();
         Long userId=  accountsService.getUserIdByKcId(kcId);
-        accountsService.addActivity(request, userId);
+        //accountsService.addActivity(request, userId);
         return ResponseEntity.status(HttpStatus.OK).body(accountsService.addActivity(request, userId));
     }
 

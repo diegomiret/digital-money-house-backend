@@ -12,8 +12,13 @@ import java.util.Optional;
 @Repository
 public interface TransactionRepository extends JpaRepository<Transaction, Long> {
 
+//    @Query(value = "SELECT * FROM transactions WHERE (sender_id= ?1 OR receiver_id= ?1) ORDER BY date DESC", nativeQuery = true)
+//    List<Transaction> getLastFiveTransactionsByUserId(Long userId, Pageable pageable);
+
+    // este filtro del where esta bien porque en la lista de actividades tengo que mostrar los ingresos y egresos, es decir el sender o el reciver
     @Query(value = "SELECT * FROM transactions WHERE (sender_id= ?1 OR receiver_id= ?1) ORDER BY date DESC", nativeQuery = true)
     List<Transaction> getLastFiveTransactionsByUserId(Long userId, Pageable pageable);
+
 
     @Query(value = "SELECT * FROM transactions WHERE (sender_id= ?1 OR receiver_id= ?1) ORDER BY date DESC", nativeQuery = true)
     List<Transaction> getAllTransactionsById(Long userId);

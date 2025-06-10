@@ -13,4 +13,6 @@ public interface AccountsRepository extends JpaRepository<Account, Long> {
     Optional<Account> findByUserId(Long userId);
 
     List<Account> findAllByUserId(Long userId);
+
+    List<Account> findByCvu(String cvu);
 }

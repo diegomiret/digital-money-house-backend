@@ -8,26 +8,30 @@ public class ActivityRequestDTO {
     private String type;
     private String description;
     private Date dated;
+    private String destination;
+
+    public ActivityRequestDTO(Double amount, String type, String description, Date dated, String destination) {
+        this.amount = amount;
+        this.type = type;
+        this.description = description;
+        this.dated = dated;
+        this.destination = destination;
+    }
 
     // Constructor vacío (requerido por frameworks como Jackson)
     public ActivityRequestDTO() {
     }
 
-    // Constructor con todos los campos
-    public ActivityRequestDTO(Double amount, String type, String description, Date dated) {
-        this.amount = amount;
-        this.type = type;
-        this.description = description;
-        this.dated = dated;
+
+
+    public String getDestination() {
+        return destination;
     }
 
-    // Constructor sin dated (para crear y asignar fecha luego en backend)
-    public ActivityRequestDTO(Double amount, String type, String description) {
-        this.amount = amount;
-        this.type = type;
-        this.description = description;
-        this.dated = new Date(); // Se genera la fecha actual automáticamente
+    public void setDestination(String destination) {
+        this.destination = destination;
     }
+
 
     // Getters y Setters
 

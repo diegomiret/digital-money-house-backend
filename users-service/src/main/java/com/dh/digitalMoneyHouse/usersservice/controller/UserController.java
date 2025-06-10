@@ -27,7 +27,17 @@ public class UserController {
     //  este metodo obtiene por el usuario por ID de Keycloak
     @GetMapping("/{id}")
     public ResponseEntity<?> getUserById(@PathVariable String id) {
-        return ResponseEntity.status(HttpStatus.OK).body(userService.getUserById(id));
+
+        try {
+            //  Si  es un numero, entonces es el id de usuario de la tabla
+            Integer.parseInt(id); // o Long.parseLong / Double.parseDouble según el caso
+            return ResponseEntity.status(HttpStatus.OK).body(userService.getUserByOriginalId(Long.parseLong(id)));
+        } catch (NumberFormatException e) {
+            //  Si no es un numero, entonces es el id de usuario de Keycloak
+            return ResponseEntity.status(HttpStatus.OK).body(userService.getUserById(id));
+        }
+
+
     }
 
     //  este metodo obtiene por el id original del usuario
@@ -36,6 +46,12 @@ public class UserController {
         return ResponseEntity.status(HttpStatus.OK).body(userService.getUserByOriginalId(id));
     }
 
+
+//    //  este metodo obtiene por el id original del usuario
+//    @GetMapping("/user/{id}")
+//    public ResponseEntity<?> getOriginalUserById2(@PathVariable Long id) {
+//        return ResponseEntity.status(HttpStatus.OK).body(userService.getUserByOriginalId(id));
+//    }
 
     @PostMapping("/register")
     public ResponseEntity<?> createUser(@RequestBody UserRegistrationDTO userRegistrationDTO) throws Exception {

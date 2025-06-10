@@ -19,6 +19,7 @@ import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
@@ -66,11 +67,22 @@ public class AccountsService {
     }
 
 
-    public List<TransactionDTO> getLastFiveTransactionsFull(Long userId) throws ResourceNotFoundException {
-        List<Transaction> transactions = feignTransactionRepository.getLastFiveTransactions(userId);
-        if (transactions.isEmpty()) {
-            throw new ResourceNotFoundException("No transactions found");
+    public List<TransactionDTO> getLastFiveTransactionsFull(Long userId, Integer limit) throws ResourceNotFoundException {
+
+        List<Transaction> transactions = new ArrayList<>();
+
+        if(limit != null) {
+            transactions = feignTransactionRepository.getLastFiveTransactions(userId);
+            if (transactions.isEmpty()) {
+                throw new ResourceNotFoundException("No transactions found");
+            }
+        }else{
+            transactions = feignTransactionRepository.getAllTransactions(userId);
+            if (transactions.isEmpty()) {
+                throw new ResourceNotFoundException("No transactions found");
+            }
         }
+
 
         User feignUser = feignUserRepository.getOriginalUserById(userId);
         //User feignUser = feignUserRepository.getOriginalUserById(userId);
@@ -79,45 +91,47 @@ public class AccountsService {
                 .map(transaction -> {
                     TransactionDTO dto = new TransactionDTO();
                     dto.setId(transaction.getId().toString());
-                    dto.setAmount(transaction.getAmountOfMoney());
+
+                    long idUserAmostrar = 0;
+
+                    //  determino si es una transferencia saliente para devolver el valor negativo
+                    if (Objects.equals(transaction.getType(), "Transfer")){
+
+                        //  si el que envia es el usuario que consulta, entonces es una transferencia saliente
+                        if(transaction.getSenderId() == userId.intValue()){
+                            dto.setAmount(-Math.abs(transaction.getAmountOfMoney()));
+
+                            // si es una transferencia saliente,  el nombre a mostrar es el destinatario
+                            idUserAmostrar = transaction.getReceiverId();
+
+                        }
+                        //  Si el que envia es otro, entonces es una transferencia entrante
+                        else{
+                            dto.setAmount(Math.abs(transaction.getAmountOfMoney()));
+
+                            // si es una transferencia entrante,  el nombre a mostrar es emisor
+                            idUserAmostrar = transaction.getSenderId();
+                        }
+
+                        //  Obtengo el nombre del destinatario o del emisor
+                        User feignUserSearched = feignUserRepository.getOriginalUserById(idUserAmostrar);
+                        dto.setName(feignUserSearched.getFirstName() + " " + feignUserSearched.getLastName());
+                    }
+
+                    //  Si es deposito, siempre devuelvo positivo
+                    if (Objects.equals(transaction.getType(), "Deposit")) {
+                        dto.setAmount(Math.abs(transaction.getAmountOfMoney()));
+
+                        //  No tiene nombre si es un deposito
+                        dto.setName("");
+                    }
+
                     dto.setOrigin(String.valueOf(transaction.getSenderId()));
                     dto.setDestination(String.valueOf(transaction.getReceiverId()));
                     dto.setDated(transaction.getDate().atZone(ZoneId.systemDefault()));
 
-                    boolean isTransfer = transaction.getSenderId() != transaction.getReceiverId();
-                    boolean isDeposit = transaction.getSenderId() == userId.intValue()
-                            && transaction.getReceiverId() == userId.intValue();
 
-
-                            long idUserAmostrar = 0;
-
-                            if(isTransfer){
-                        //  si es transferencia, coloco el nombre dependendiendo el destinatario
-                        if(transaction.getAmountOfMoney() < 0){
-                            //  es recibida, entoces muestro el que elnvio
-                            idUserAmostrar = transaction.getReceiverId();
-                        }
-                        if(transaction.getAmountOfMoney() > 0) {
-                            //  es recibida, entoces muestro el que elnvio
-                            idUserAmostrar = transaction.getSenderId();
-                        }
-                        }
-
-                    if (isTransfer){
-                        User feignUserSearched = feignUserRepository.getOriginalUserById(idUserAmostrar);
-
-                        dto.setName(feignUserSearched.getFirstName() + " " + feignUserSearched.getLastName());
-
-                    }else{
-                        dto.setName("");
-                    }
-
-
-                    dto.setType(isTransfer
-                            ? TransactionType.Transfer
-                            : isDeposit
-                            ? TransactionType.Deposit
-                            : null); // O manejar otro caso si aplica
+                    dto.setType(TransactionType.valueOf(transaction.getType()));
 
                     return dto;
                 })
@@ -144,6 +158,8 @@ public class AccountsService {
             ActivityDTOResponse response = new ActivityDTOResponse();
             response.setAmount(transaccion.getAmountOfMoney());
             response.setType(transaccion.getType());
+            response.setDated(transaccion.getDate());
+            response.setName(transaccion.getDescription());
 
             return response;
 
@@ -343,16 +359,45 @@ public class AccountsService {
         } else {
             //Account account = accountOptional.get();
 
+            Long reciber = userId;
+            if (Objects.equals(request.getType(), "Transfer")){
+                Account account = accountsRepository.findByCvu(request.getDestination())
+                        .stream()
+                        .findFirst()
+                        .orElseThrow(() -> new RuntimeException("No se encontró ninguna cuenta con ese CVU"));
+
+                reciber = account.getUserId();
+            }
+
             CreateTransaction newTransaction = new CreateTransaction();
             newTransaction.setType(request.getType());
             newTransaction.setDate(LocalDateTime.now());
             newTransaction.setDescription(request.getDescription());
-            newTransaction.setReceiverId(Math.toIntExact(userId));
+            newTransaction.setReceiverId(Math.toIntExact(reciber));
             newTransaction.setSenderId(Math.toIntExact(userId));
-            newTransaction.setAmountOfMoney(request.getAmount());
+
+            //  Guardo el valor absoluto
+            newTransaction.setAmountOfMoney(Math.abs(request.getAmount()));
 
             return feignTransactionRepository.createTransaction(newTransaction);
 
         }
+    }
+
+    public List<AccountInformation> getAllAccounts() {
+
+        List<Account> accounts = accountsRepository.findAll();
+
+        List<AccountInformation> accountInfos = accounts.stream()
+                .map(account -> new AccountInformation(
+                        account.getId(),
+                        account.getUserId(),
+                        account.getBalance(),
+                        account.getCvu(),
+                        account.getAlias()
+                ))
+                .collect(Collectors.toList());
+
+        return accountInfos;
     }
 }
