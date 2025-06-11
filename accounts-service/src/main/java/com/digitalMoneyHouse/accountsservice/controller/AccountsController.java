@@ -33,6 +33,7 @@ public class AccountsController {
     //  obtiene todas las cuentas
     @GetMapping("/accounts")
     public ResponseEntity<?> getAllAccounts() throws ResourceNotFoundException {
+        String kcId = SecurityContextHolder.getContext().getAuthentication().getName();
         return ResponseEntity.status(HttpStatus.OK).body(accountsService.getAllAccounts());
     }
 
@@ -162,8 +163,9 @@ public class AccountsController {
     public ResponseEntity<?> deleteIdCard(@PathVariable String idUser, @PathVariable Long idCard) throws ResourceNotFoundException {
         //String kcId = SecurityContextHolder.getContext().getAuthentication().getName();
         Long userIdX=  accountsService.getUserIdByKcId(idUser);
-        accountsService.deleteCardById(idCard, userIdX);
-        return ResponseEntity.ok().build();
+
+        return ResponseEntity.status(HttpStatus.OK).body(accountsService.deleteCardById(idCard, userIdX));
+        //return ResponseEntity.ok().build();
     }
 
 

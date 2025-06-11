@@ -67,6 +67,64 @@ public class AccountsService {
     }
 
 
+
+
+    private TransactionDTO genTransactionDTO(Long userId, Transaction transaction) {
+
+        long idUserAmostrar = 0;
+        TransactionDTO dto = new TransactionDTO();
+
+        dto.setId(transaction.getId().toString());
+
+        //  determino si es una transferencia saliente para devolver el valor negativo
+        if (Objects.equals(transaction.getType(), "Transfer")){
+
+            //  si el que envia es el usuario que consulta, entonces es una transferencia saliente
+            if(transaction.getSenderId() == userId.intValue()){
+                dto.setAmount(-Math.abs(transaction.getAmountOfMoney()));
+
+                // si es una transferencia saliente,  el nombre a mostrar es el destinatario
+                idUserAmostrar = transaction.getReceiverId();
+
+            }
+            //  Si el que envia es otro, entonces es una transferencia entrante
+            else{
+                dto.setAmount(Math.abs(transaction.getAmountOfMoney()));
+
+                // si es una transferencia entrante,  el nombre a mostrar es emisor
+                idUserAmostrar = transaction.getSenderId();
+            }
+
+            //  Obtengo el nombre del destinatario o del emisor
+            User feignUserSearched = feignUserRepository.getOriginalUserById(idUserAmostrar);
+            dto.setName(feignUserSearched.getFirstName() + " " + feignUserSearched.getLastName());
+        }
+
+        //  Si es deposito, siempre devuelvo positivo
+        if (Objects.equals(transaction.getType(), "Deposit")) {
+            dto.setAmount(Math.abs(transaction.getAmountOfMoney()));
+
+            //  No tiene nombre si es un deposito
+            dto.setName("");
+        }
+
+        //  Aca obtengo el cvu de los idSender y idReciver
+        Optional<Account> cvuSender = accountsRepository.findByUserId(Long.valueOf(transaction.getSenderId()));
+        Optional<Account> cvuReciver = accountsRepository.findByUserId(Long.valueOf(transaction.getReceiverId()));
+
+
+        dto.setOrigin(cvuSender.get().getCvu());
+        dto.setDestination(cvuReciver.get().getCvu());
+        dto.setDated(transaction.getDate().atZone(ZoneId.systemDefault()));
+
+
+        dto.setType(TransactionType.valueOf(transaction.getType()));
+
+        return dto;
+    }
+
+
+
     public List<TransactionDTO> getLastFiveTransactionsFull(Long userId, Integer limit) throws ResourceNotFoundException {
 
         List<Transaction> transactions = new ArrayList<>();
@@ -89,54 +147,15 @@ public class AccountsService {
 
         return transactions.stream()
                 .map(transaction -> {
-                    TransactionDTO dto = new TransactionDTO();
-                    dto.setId(transaction.getId().toString());
 
-                    long idUserAmostrar = 0;
+                    TransactionDTO dtoGenerated = genTransactionDTO(userId, transaction);
 
-                    //  determino si es una transferencia saliente para devolver el valor negativo
-                    if (Objects.equals(transaction.getType(), "Transfer")){
-
-                        //  si el que envia es el usuario que consulta, entonces es una transferencia saliente
-                        if(transaction.getSenderId() == userId.intValue()){
-                            dto.setAmount(-Math.abs(transaction.getAmountOfMoney()));
-
-                            // si es una transferencia saliente,  el nombre a mostrar es el destinatario
-                            idUserAmostrar = transaction.getReceiverId();
-
-                        }
-                        //  Si el que envia es otro, entonces es una transferencia entrante
-                        else{
-                            dto.setAmount(Math.abs(transaction.getAmountOfMoney()));
-
-                            // si es una transferencia entrante,  el nombre a mostrar es emisor
-                            idUserAmostrar = transaction.getSenderId();
-                        }
-
-                        //  Obtengo el nombre del destinatario o del emisor
-                        User feignUserSearched = feignUserRepository.getOriginalUserById(idUserAmostrar);
-                        dto.setName(feignUserSearched.getFirstName() + " " + feignUserSearched.getLastName());
-                    }
-
-                    //  Si es deposito, siempre devuelvo positivo
-                    if (Objects.equals(transaction.getType(), "Deposit")) {
-                        dto.setAmount(Math.abs(transaction.getAmountOfMoney()));
-
-                        //  No tiene nombre si es un deposito
-                        dto.setName("");
-                    }
-
-                    dto.setOrigin(String.valueOf(transaction.getSenderId()));
-                    dto.setDestination(String.valueOf(transaction.getReceiverId()));
-                    dto.setDated(transaction.getDate().atZone(ZoneId.systemDefault()));
-
-
-                    dto.setType(TransactionType.valueOf(transaction.getType()));
-
-                    return dto;
+                    return dtoGenerated;
                 })
                 .collect(Collectors.toList());
     }
+
+
 
     public List<Transaction> getAllTransactions(Long userId) throws ResourceNotFoundException {
         List<Transaction> transactions = feignTransactionRepository.getAllTransactions(userId);
@@ -146,7 +165,7 @@ public class AccountsService {
         return transactions;
     }
 
-    public ActivityDTOResponse getTransaction(Long userId, Long transactionId) throws ResourceNotFoundException {
+    public TransactionDTO getTransaction(Long userId, Long transactionId) throws ResourceNotFoundException {
         Optional<Account> accountOptional = accountsRepository.findByUserId(userId);
         if(accountOptional.isEmpty()) {
             throw new ResourceNotFoundException("Account not found");
@@ -155,13 +174,16 @@ public class AccountsService {
 
             Transaction transaccion = feignTransactionRepository.getTransaction(account.getId(), transactionId);
 
-            ActivityDTOResponse response = new ActivityDTOResponse();
-            response.setAmount(transaccion.getAmountOfMoney());
-            response.setType(transaccion.getType());
-            response.setDated(transaccion.getDate());
-            response.setName(transaccion.getDescription());
+            TransactionDTO dtoGenerated = genTransactionDTO(userId, transaccion);
 
-            return response;
+//            ActivityDTOResponse response = new ActivityDTOResponse();
+//            response.setAmount(transaccion.getAmountOfMoney());
+//            response.setType(transaccion.getType());
+//            response.setDated(transaccion.getDate());
+//            response.setName(transaccion.getDescription());
+//            return response;
+
+            return dtoGenerated;
 
         }
     }
@@ -340,13 +362,24 @@ public class AccountsService {
         return accountsRepository.save(account);
     }
 
-    public void deleteCardById(Long idCard, Long userId) throws ResourceNotFoundException {
+    public Card deleteCardById(Long idCard, Long userId) throws ResourceNotFoundException {
         Optional<Account> accountOptional = accountsRepository.findByUserId(userId);
+
+
         if(accountOptional.isEmpty()) {
             throw new ResourceNotFoundException("Account not found");
         } else {
             Account account = accountOptional.get();
+
+            Card card =  feignCardRepository.getCardByIdAndAccountId(account.getId(), idCard);
+
+            if(card == null) {
+                throw new ResourceNotFoundException("card not found");
+            }
+
             feignCardRepository.deleteCardById(account.getId(), idCard);
+
+            return card;
         }
     }
 
@@ -384,18 +417,22 @@ public class AccountsService {
         }
     }
 
-    public List<AccountInformation> getAllAccounts() {
+    public List<AccountResponseDTO> getAllAccounts() {
 
         List<Account> accounts = accountsRepository.findAll();
 
-        List<AccountInformation> accountInfos = accounts.stream()
-                .map(account -> new AccountInformation(
-                        account.getId(),
-                        account.getUserId(),
-                        account.getBalance(),
-                        account.getCvu(),
-                        account.getAlias()
-                ))
+        List<AccountResponseDTO> accountInfos = accounts.stream()
+                .map(account -> {
+                    String feignUserSearched = feignUserRepository.getOriginalUserById(account.getUserId()).getId();
+
+                    AccountResponseDTO response = new AccountResponseDTO();
+                    response.setId(account.getId());
+                    response.setAlias(account.getAlias());
+                    response.setCvu(account.getCvu());
+                    response.setBalance(account.getBalance());
+                    response.setUserId(feignUserSearched);
+                    return response;
+                })
                 .collect(Collectors.toList());
 
         return accountInfos;
