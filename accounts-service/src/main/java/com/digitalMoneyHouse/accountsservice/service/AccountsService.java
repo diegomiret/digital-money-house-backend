@@ -3,6 +3,7 @@ package com.digitalMoneyHouse.accountsservice.service;
 import com.digitalMoneyHouse.accountsservice.entities.*;
 import com.digitalMoneyHouse.accountsservice.exceptions.BadRequestException;
 import com.digitalMoneyHouse.accountsservice.exceptions.ResourceNotFoundException;
+import com.digitalMoneyHouse.accountsservice.exceptions.TransactionGoneException;
 import com.digitalMoneyHouse.accountsservice.repository.AccountsRepository;
 import com.digitalMoneyHouse.accountsservice.repository.FeignCardRepository;
 import com.digitalMoneyHouse.accountsservice.repository.FeignTransactionRepository;
@@ -45,10 +46,10 @@ public class AccountsService {
 
     public AccountInformation getAccountInformation(Long userId) throws ResourceNotFoundException {
         Optional<Account> accountOptional = accountsRepository.findByUserId(userId);
-        if(accountOptional.isPresent()) {
+        if (accountOptional.isPresent()) {
             Account accountFound = accountOptional.get();
             User feignUser = feignUserRepository.getUserById(userId);
-            return new AccountInformation(accountFound.getId(), accountFound.getUserId() ,accountFound.getBalance(), feignUser.getCvu(), feignUser.getAlias());
+            return new AccountInformation(accountFound.getId(), accountFound.getUserId(), accountFound.getBalance(), accountFound.getCvu(), accountFound.getAlias());
         } else {
             throw new ResourceNotFoundException("Account not found");
         }
@@ -59,14 +60,12 @@ public class AccountsService {
     }
 
     public List<Transaction> getLastFiveTransactions(Long userId) throws ResourceNotFoundException {
-         List<Transaction> transactions = feignTransactionRepository.getLastFiveTransactions(userId);
-         if(transactions.isEmpty()){
-             throw new ResourceNotFoundException("No transactions found");
-         }
-         return transactions;
+        List<Transaction> transactions = feignTransactionRepository.getLastFiveTransactions(userId);
+        if (transactions.isEmpty()) {
+            throw new ResourceNotFoundException("No transactions found");
+        }
+        return transactions;
     }
-
-
 
 
     private TransactionDTO genTransactionDTO(Long userId, Transaction transaction) {
@@ -77,10 +76,10 @@ public class AccountsService {
         dto.setId(transaction.getId().toString());
 
         //  determino si es una transferencia saliente para devolver el valor negativo
-        if (Objects.equals(transaction.getType(), "Transfer")){
+        if (Objects.equals(transaction.getType(), "Transfer")) {
 
             //  si el que envia es el usuario que consulta, entonces es una transferencia saliente
-            if(transaction.getSenderId() == userId.intValue()){
+            if (transaction.getSenderId() == userId.intValue()) {
                 dto.setAmount(-Math.abs(transaction.getAmountOfMoney()));
 
                 // si es una transferencia saliente,  el nombre a mostrar es el destinatario
@@ -88,7 +87,7 @@ public class AccountsService {
 
             }
             //  Si el que envia es otro, entonces es una transferencia entrante
-            else{
+            else {
                 dto.setAmount(Math.abs(transaction.getAmountOfMoney()));
 
                 // si es una transferencia entrante,  el nombre a mostrar es emisor
@@ -124,17 +123,16 @@ public class AccountsService {
     }
 
 
-
     public List<TransactionDTO> getLastFiveTransactionsFull(Long userId, Integer limit) throws ResourceNotFoundException {
 
         List<Transaction> transactions = new ArrayList<>();
 
-        if(limit != null) {
+        if (limit != null) {
             transactions = feignTransactionRepository.getLastFiveTransactions(userId);
             if (transactions.isEmpty()) {
                 throw new ResourceNotFoundException("No transactions found");
             }
-        }else{
+        } else {
             transactions = feignTransactionRepository.getAllTransactions(userId);
             if (transactions.isEmpty()) {
                 throw new ResourceNotFoundException("No transactions found");
@@ -156,10 +154,9 @@ public class AccountsService {
     }
 
 
-
     public List<Transaction> getAllTransactions(Long userId) throws ResourceNotFoundException {
         List<Transaction> transactions = feignTransactionRepository.getAllTransactions(userId);
-        if(transactions.isEmpty()){
+        if (transactions.isEmpty()) {
             throw new ResourceNotFoundException("No transactions found");
         }
         return transactions;
@@ -167,7 +164,7 @@ public class AccountsService {
 
     public TransactionDTO getTransaction(Long userId, Long transactionId) throws ResourceNotFoundException {
         Optional<Account> accountOptional = accountsRepository.findByUserId(userId);
-        if(accountOptional.isEmpty()) {
+        if (accountOptional.isEmpty()) {
             throw new ResourceNotFoundException("Account not found");
         } else {
             Account account = accountOptional.get();
@@ -190,7 +187,7 @@ public class AccountsService {
 
     public Card registerCard(@RequestBody CardRequest card, Long userId) throws ResourceNotFoundException {
         Optional<Account> accountOptional = accountsRepository.findByUserId(userId);
-        if(accountOptional.isEmpty()) {
+        if (accountOptional.isEmpty()) {
             throw new ResourceNotFoundException("Account not found");
         } else {
             Account account = accountOptional.get();
@@ -201,11 +198,11 @@ public class AccountsService {
 
     public List<CardResponseDTO> getAllCards(Long userId) throws ResourceNotFoundException {
         Optional<Account> accountOptional = accountsRepository.findByUserId(userId);
-        if(accountOptional.isEmpty()) {
+        if (accountOptional.isEmpty()) {
             throw new ResourceNotFoundException("Account not found");
         } else {
             Account account = accountOptional.get();
-            List<Card> allCards =  feignCardRepository.getAllCardsByAccountId(account.getId());
+            List<Card> allCards = feignCardRepository.getAllCardsByAccountId(account.getId());
 
             List<CardResponseDTO> dtos = new ArrayList<>();
 
@@ -238,16 +235,7 @@ public class AccountsService {
             return dtos;
 
 
-
-
         }
-
-
-
-
-
-
-
 
 
     }
@@ -255,7 +243,7 @@ public class AccountsService {
 
     public Card getCardById(Long cardId, Long userId) throws ResourceNotFoundException {
         Optional<Account> accountOptional = accountsRepository.findByUserId(userId);
-        if(accountOptional.isEmpty()) {
+        if (accountOptional.isEmpty()) {
             throw new ResourceNotFoundException("Account not found");
         } else {
             Account account = accountOptional.get();
@@ -265,7 +253,7 @@ public class AccountsService {
 
     public Card getCardByNumber(String cardNumber, Long userId) throws ResourceNotFoundException {
         Optional<Account> accountOptional = accountsRepository.findByUserId(userId);
-        if(accountOptional.isEmpty()) {
+        if (accountOptional.isEmpty()) {
             throw new ResourceNotFoundException("Account not found");
         } else {
             Account account = accountOptional.get();
@@ -275,7 +263,7 @@ public class AccountsService {
 
     public void deleteCardByNumber(String cardNumber, Long userId) throws ResourceNotFoundException {
         Optional<Account> accountOptional = accountsRepository.findByUserId(userId);
-        if(accountOptional.isEmpty()) {
+        if (accountOptional.isEmpty()) {
             throw new ResourceNotFoundException("Account not found");
         } else {
             Account account = accountOptional.get();
@@ -289,16 +277,16 @@ public class AccountsService {
     }
 
     public void addMoney(DepositMoneyRequest request, Long userId) throws ResourceNotFoundException {
-            Card card = getCardByNumber(request.getCardNumber(), userId);
+        Card card = getCardByNumber(request.getCardNumber(), userId);
         System.out.println(card.getNumber() + " --- " + card.getName());
-            Optional<Account> accountOptional = accountsRepository.findByUserId(userId);
-            if(accountOptional.isEmpty()) {
-                throw new ResourceNotFoundException("Account not found");
-            } else {
-                Account account = accountOptional.get();
-                account.setBalance(account.getBalance() + request.getAmount());
-                accountsRepository.save(account);
-            }
+        Optional<Account> accountOptional = accountsRepository.findByUserId(userId);
+        if (accountOptional.isEmpty()) {
+            throw new ResourceNotFoundException("Account not found");
+        } else {
+            Account account = accountOptional.get();
+            account.setBalance(account.getBalance() + request.getAmount());
+            accountsRepository.save(account);
+        }
     }
 
     public Transaction sendMoney(TransactionRequest transactionRequest, Long originUserId) throws BadRequestException {
@@ -308,23 +296,22 @@ public class AccountsService {
         checkTransactionData(transactionRequest);
         int destinyUserId;
 
-        if(transactionRequest.getDestinyAccount().matches(aliasPattern)) {
+        if (transactionRequest.getDestinyAccount().matches(aliasPattern)) {
             destinyUserId = Math.toIntExact(feignUserRepository.getUserIdByAlias(transactionRequest.getDestinyAccount()));
-        } else if (transactionRequest.getDestinyAccount().matches(cvuPattern) && transactionRequest.getDestinyAccount().length()==22) {
+        } else if (transactionRequest.getDestinyAccount().matches(cvuPattern) && transactionRequest.getDestinyAccount().length() == 22) {
             destinyUserId = Math.toIntExact(feignUserRepository.getUserIdByCvu(transactionRequest.getDestinyAccount()));
-            } else
-            {
-                throw new BadRequestException("Invalid destiny account");
-            }
+        } else {
+            throw new BadRequestException("Invalid destiny account");
+        }
 
         return feignTransactionRepository.createTransaction(new CreateTransaction(Math.toIntExact(originUserId), destinyUserId, transactionRequest.getAmount(), LocalDateTime.now()));
     }
 
     private void checkTransactionData(TransactionRequest transactionRequest) throws BadRequestException {
-        if(transactionRequest.getDestinyAccount().equals("") || transactionRequest.getDestinyAccount()==null) {
+        if (transactionRequest.getDestinyAccount().equals("") || transactionRequest.getDestinyAccount() == null) {
             throw new BadRequestException("No destiny account added");
         }
-        if(transactionRequest.getAmount() == 0.0 || transactionRequest.getAmount()==null) {
+        if (transactionRequest.getAmount() == 0.0 || transactionRequest.getAmount() == null) {
             throw new BadRequestException("No amount added");
         }
     }
@@ -332,7 +319,7 @@ public class AccountsService {
     public List<Account> getAccountsByIdUser(Long userId) throws ResourceNotFoundException {
         Optional<Account> accountOptional = accountsRepository.findByUserId(userId);
         List<Account> accounts = accountsRepository.findAllByUserId(userId);
-        if(accountOptional.isEmpty()) {
+        if (accountOptional.isEmpty()) {
             throw new ResourceNotFoundException("Account not found");
         } else {
             return accounts;
@@ -366,14 +353,14 @@ public class AccountsService {
         Optional<Account> accountOptional = accountsRepository.findByUserId(userId);
 
 
-        if(accountOptional.isEmpty()) {
+        if (accountOptional.isEmpty()) {
             throw new ResourceNotFoundException("Account not found");
         } else {
             Account account = accountOptional.get();
 
-            Card card =  feignCardRepository.getCardByIdAndAccountId(account.getId(), idCard);
+            Card card = feignCardRepository.getCardByIdAndAccountId(account.getId(), idCard);
 
-            if(card == null) {
+            if (card == null) {
                 throw new ResourceNotFoundException("card not found");
             }
 
@@ -387,13 +374,13 @@ public class AccountsService {
         //Card card = getCardByNumber(request.getCardNumber(), userId);
 
         Optional<Account> accountOptional = accountsRepository.findByUserId(userId);
-        if(accountOptional.isEmpty()) {
+        if (accountOptional.isEmpty()) {
             throw new ResourceNotFoundException("Account not found");
         } else {
             //Account account = accountOptional.get();
 
             Long reciber = userId;
-            if (Objects.equals(request.getType(), "Transfer")){
+            if (Objects.equals(request.getType(), "Transfer")) {
                 Account account = accountsRepository.findByCvu(request.getDestination())
                         .stream()
                         .findFirst()
@@ -412,10 +399,20 @@ public class AccountsService {
             //  Guardo el valor absoluto
             newTransaction.setAmountOfMoney(Math.abs(request.getAmount()));
 
-            return feignTransactionRepository.createTransaction(newTransaction);
+
+            try {
+                Transaction transaccion = feignTransactionRepository.createTransaction(newTransaction);
+                return transaccion;
+            } catch (TransactionGoneException ex) {
+                throw ex;
+            } catch (Exception ex2) {
+                throw ex2;
+            }
+
 
         }
     }
+
 
     public List<AccountResponseDTO> getAllAccounts() {
 

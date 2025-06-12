@@ -3,6 +3,7 @@ package com.digitalMoneyHouse.accountsservice.controller;
 import com.digitalMoneyHouse.accountsservice.entities.*;
 import com.digitalMoneyHouse.accountsservice.exceptions.BadRequestException;
 import com.digitalMoneyHouse.accountsservice.exceptions.ResourceNotFoundException;
+import com.digitalMoneyHouse.accountsservice.exceptions.TransactionGoneException;
 import com.digitalMoneyHouse.accountsservice.service.AccountsService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -174,7 +175,17 @@ public class AccountsController {
         String kcId = SecurityContextHolder.getContext().getAuthentication().getName();
         Long userId=  accountsService.getUserIdByKcId(kcId);
         //accountsService.addActivity(request, userId);
-        return ResponseEntity.status(HttpStatus.OK).body(accountsService.addActivity(request, userId));
+        //return ResponseEntity.status(HttpStatus.OK).body(accountsService.addActivity(request, userId));
+
+
+        try {
+            Transaction created = accountsService.addActivity(request, userId);
+            return ResponseEntity.ok(created);
+        } catch (TransactionGoneException ex) {
+            return ResponseEntity.status(HttpStatus.GONE).body("Saldo insuficiente");
+        }
+
+        //return ResponseEntity.status(HttpStatus.OK).body(accountsService.addActivity(request, userId));
     }
 
 

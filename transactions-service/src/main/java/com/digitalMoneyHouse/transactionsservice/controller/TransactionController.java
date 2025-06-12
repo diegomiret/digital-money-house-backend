@@ -11,6 +11,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 
 @RestController
@@ -28,29 +29,42 @@ public class TransactionController {
     public ResponseEntity<?> createTransaction(@RequestBody TransactionRequest transaction) {
 
         try{
-//            Optional<Account> fromAccountOptional = transactionService.getAccount((long) transaction.getSenderId());
-//            Optional<Account> toAccountOptional = transactionService.getAccount((long) transaction.getReceiverId());
-//            if(fromAccountOptional.isEmpty()) {
-//                return new ResponseEntity("Origin Account does not exists", HttpStatus.BAD_REQUEST);
-//            }
-//
-//            if(toAccountOptional.isEmpty()) {
-//                return new ResponseEntity("Destiny Account does not exists", HttpStatus.BAD_REQUEST);
-//            }
+            Optional<Account> fromAccountOptional = transactionService.getAccount((long) transaction.getSenderId());
+            Optional<Account> toAccountOptional = transactionService.getAccount((long) transaction.getReceiverId());
+            if(fromAccountOptional.isEmpty()) {
+                return new ResponseEntity("Origin Account does not exists", HttpStatus.BAD_REQUEST);
+            }
 
-//
-//            Account fromAccount = fromAccountOptional.get();
-//            Account toAccount = toAccountOptional.get();
+            if(toAccountOptional.isEmpty()) {
+                return new ResponseEntity("Destiny Account does not exists", HttpStatus.BAD_REQUEST);
+            }
 
-//            if(fromAccount.getBalance() < transaction.getAmountOfMoney()) {
-//                return new ResponseEntity("Not enough money", HttpStatus.BAD_REQUEST);
-//            }
-//
-//            fromAccount.setBalance(fromAccount.getBalance()-transaction.getAmountOfMoney());
-//            toAccount.setBalance(toAccount.getBalance() + transaction.getAmountOfMoney());
-//
-//            transactionService.updateAccount(fromAccount);
-//            transactionService.updateAccount(toAccount);
+            if (Objects.equals(transaction.getType(), "Transfer")) {
+
+                Account fromAccount = fromAccountOptional.get();
+                Account toAccount = toAccountOptional.get();
+
+                if (fromAccount.getBalance() < transaction.getAmountOfMoney()) {
+                    //return new ResponseEntity("Not enough money", HttpStatus.GONE);
+                    return ResponseEntity.status(HttpStatus.GONE).body(transaction);
+                }
+
+                fromAccount.setBalance(fromAccount.getBalance() - Math.abs(transaction.getAmountOfMoney()));
+                toAccount.setBalance(toAccount.getBalance() + Math.abs(transaction.getAmountOfMoney()));
+
+                transactionService.updateAccount(fromAccount);
+                transactionService.updateAccount(toAccount);
+
+            }
+            else if (Objects.equals(transaction.getType(), "Deposit")) {
+
+                Account fromAccount = fromAccountOptional.get();
+                Account toAccount = toAccountOptional.get();
+
+                toAccount.setBalance(toAccount.getBalance() + Math.abs(transaction.getAmountOfMoney()));
+
+                transactionService.updateAccount(toAccount);
+            }
 
             return ResponseEntity.status(HttpStatus.OK).body(transactionService.createTransaction(transaction));
 
