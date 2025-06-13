@@ -1,0 +1,155 @@
+version: '3.8'
+
+networks:
+  dmh-network:
+    driver: bridge
+    name: dmh-network
+
+services:
+  keycloak:
+    image: quay.io/keycloak/keycloak:23.0.6
+    container_name: keycloak
+    environment:
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: abc1234
+      KEYCLOAK_IMPORT: /opt/keycloak/data/import/dmh-realm.json
+    volumes:
+      - ./dmh-realm.json:/opt/keycloak/data/import/dmh-realm.json
+    networks:
+      - dmh-network
+    command:
+      ["start-dev", "--import-realm"]
+    ports:
+      - 8080:8080
+
+  mysql:
+    image: mysql:8.0.33
+    container_name: mysql
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: admin
+      MYSQL_DATABASE: wallet_db
+    healthcheck:
+      test: [ "CMD", "mysqladmin", "ping", "-h", "localhost" ]
+      timeout: 10s
+      retries: 5
+    networks:
+      - dmh-network
+    ports:
+      - 3307:3306
+
+  eureka-server:
+    build: eureka-server
+    mem_limit: 512m
+    healthcheck:
+      test: [ "CMD-SHELL", "curl -f http://localhost:8761/ || exit 1" ]
+      timeout: 10s
+      retries: 3
+    networks:
+      - dmh-network
+    ports:
+      - 8761:8761
+
+  config-server:
+    build: config-server
+    mem_limit: 512m
+    depends_on:
+      eureka-server:
+        condition: service_healthy
+    healthcheck:
+      test: [ "CMD-SHELL", "curl -f http://localhost:8888/actuator/health || exit 1" ]
+      timeout: 10s
+      retries: 3
+    networks:
+      - dmh-network
+    ports:
+      - 8888:8888
+
+  gateway:
+    build: gateway
+    mem_limit: 512m
+    depends_on:
+      config-server:
+        condition: service_healthy
+    networks:
+      - dmh-network
+    ports:
+      - 8084:8084
+
+  users-service:
+    build: users-service
+    mem_limit: 512m
+    depends_on:
+      config-server:
+        condition: service_healthy
+      mysql:
+        condition: service_healthy
+      keycloak:
+        condition: service_started
+    environment:
+      DB_URL: jdbc:mysql://mysql:3306/wallet_db?createDatabaseIfNotExist=true&serverTimezone=UTC
+      DB_USER_NAME: root
+      DB_PASSWORD: admin
+    restart: always
+    volumes:
+      - ./users-service/src/main/java/com/dh/digitalMoneyHouse/usersservice/utils:/app/utils
+    networks:
+      - dmh-network
+    ports:
+      - 8081:8081
+
+  accounts-service:
+    build: accounts-service
+    mem_limit: 512m
+    depends_on:
+      config-server:
+        condition: service_healthy
+      mysql:
+        condition: service_healthy
+      keycloak:
+        condition: service_started
+    environment:
+      DB_URL: jdbc:mysql://mysql:3306/dmhdatabase?createDatabaseIfNotExist=true&serverTimezone=UTC
+      DB_USER_NAME: root
+      DB_PASSWORD: admin
+    restart: always
+    networks:
+      - dmh-network
+    ports:
+      - 8082:8082
+
+  cards-service:
+    build: cards-service
+    mem_limit: 512m
+    depends_on:
+      config-server:
+        condition: service_healthy
+      mysql:
+        condition: service_healthy
+    environment:
+      DB_URL: jdbc:mysql://mysql:3306/dmhdatabase?createDatabaseIfNotExist=true&serverTimezone=UTC
+      DB_USER_NAME: root
+      DB_PASSWORD: admin
+    restart: always
+    networks:
+      - dmh-network
+    ports:
+      - 8085:8085
+
+  transactions-service:
+    build: transactions-service
+    mem_limit: 512m
+    depends_on:
+      config-server:
+        condition: service_healthy
+      mysql:
+        condition: service_healthy
+    environment:
+      DB_URL: jdbc:mysql://mysql:3306/dmhdatabase?createDatabaseIfNotExist=true&serverTimezone=UTC
+      DB_USER_NAME: root
+      DB_PASSWORD: admin
+    restart: always
+    networks:
+      - dmh-network
+    ports:
+      - 8083:8083
