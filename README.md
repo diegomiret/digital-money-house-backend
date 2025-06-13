@@ -70,3 +70,10 @@ Repositorio dedicado a pruebas automáticas del proyecto:
 1. Clonar el repositorio del frontend:  
    ```bash
    git clone https://github.com/diegomiret/digital-money-house-frontend
+   cd digital-money-house-frontend
+   npm install
+   npm run dev
+
+2. Clonar el repositorio del frontend: 
+   Acceder a la aplicación desde tu navegador en:
+http://localhost:3000 (puede variar según configuración local)
